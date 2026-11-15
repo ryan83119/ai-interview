@@ -68,44 +68,43 @@ interface Assessment {
 
 const SAMPLE_PRESETS = [
   {
-    company: '瑞健醫療 (SHL Medical)',
-    title: 'Testing - Design Verification Engineer 設計驗證工程師',
-    url: 'https://www.104.com.tw/job/71u9s',
-    jobDescription: `【Company Overview】
-SHL Medical is the world-leading solution provider in the design, development, and manufacturing of advanced drug delivery systems with more than 5000 employees worldwide.
-
-【Job Overview】
-The Verification Engineer is responsible for ensuring the precision, accuracy, and compliance of engineering tests, feasibility studies, design assessments, and design verifications in accordance with industry standards and regulation requirements. This pivotal role involves executing tests to verify the device function, performance, safety and compliance.`,
-    resume: `【個人簡介】
-具備跨領域 R&D 與專案管理實務經驗，熟悉產品設計驗證流程、治具規劃與試產除錯。
-
-【核心經歷】
-- 主導新品驗證測試方案制定，完成信賴性與功能性驗證報告。
-- 與跨部門團隊密切協同，解決初期公差與機構問題。`
-  },
-  {
-    company: '科技新創',
-    title: '前端資深工程師',
+    company: '科技新創團隊',
+    title: '資深前端工程師 (Senior Frontend)',
     url: 'https://example.com/jobs/senior-frontend-engineer',
-    jobDescription: '主導高流量電商核心模組重構，負責前端架構設計與效能優化。',
+    jobDescription: '負責高流量電商核心模組重構，主導微前端架構設計、元件庫統一與前端效能優化 (LCP/FID/CLS)。',
     resume: `【個人簡介】
 5 年前端開發經驗，熟悉 React、Next.js、TypeScript 與 Tailwind CSS。主導過高流量電商核心模組重構，並導入微前端架構。
 
 【工作經歷】
 - 科技新創 資深前端工程師（2023 - 至今）：
   - 負責使用者介面效能優化，將 LCP 指標提升 45%，跳出率降低 12%。
-  - 導入 Tailwind 與 Design System，跨團隊元件覆用率達 80%。`
+  - 導入 Tailwind 與 Design System，跨團隊元件覆用率達 80%。
+- 軟體顧問公司 前端工程師（2021 - 2023）：
+  - 開發 CRM 系統與即時數據儀表板，支援 WebSocket 即時圖表渲染。`
   },
   {
-    company: '生成式 AI 企業',
-    title: 'AI 產品經理',
+    company: '跨國科技外商',
+    title: 'AI 產品經理 (AI Product Manager)',
     url: 'https://example.com/jobs/ai-product-manager',
-    jobDescription: '規劃企業級生成式 AI 產品落地與 RAG 應用架構。',
+    jobDescription: '規劃企業級生成式 AI 產品落地、RAG 檢索增強生成架構與評測指標，串接 LLM 工作流程並推動商業變現。',
     resume: `【個人簡介】
 4 年科技產品規劃經驗，專注於生成式 AI 應用落地、LLM 工作流程設計與商業變現。
 
 【核心專案】
-- 企業級智能客服系統：從 0 到 1 規劃 RAG 檢索架構與評測指標，客服自動回覆率達 72%，年省百萬營運成本。`
+- 企業級智能客服系統：從 0 到 1 規劃 RAG 檢索架構與評測指標，客服自動回覆率達 72%，年省百萬營運成本。
+- 具備跨領域溝通與敏捷開發引領能力，能精準將商業目標轉化為工程規格。`
+  },
+  {
+    company: '雲端電商平台',
+    title: '後端分散式架構師 (Backend Architect)',
+    url: 'https://example.com/jobs/backend-architect',
+    jobDescription: '負責高併發分散式系統架構設計、微服務拆分、資料庫讀寫分離與高可用雲端基礎設施維護。',
+    resume: `【個人簡介】
+6 年後端研發經驗，專精 Go、Node.js、PostgreSQL、Redis 與 Kubernetes。曾處理每秒百萬級併發流量。
+
+【核心經歷】
+- 主導微服務系統重構，降低系統延遲 35%，並將服務可用性提升至 99.99%。
+- 設計分散式快取與事務機制，解決高尖峰秒殺場景下的資料一致性難題。`
   }
 ];
 
@@ -918,7 +917,7 @@ export default function SaaSInterviewApp() {
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="例如：瑞健股份有限公司 (SHL Medical)、聯發科、Google"
+                        placeholder="例如：Google、台積電、LINE、科技新創公司"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden transition-all text-sm placeholder:text-[#A0A8A2]"
                       />
                     </div>
@@ -933,7 +932,7 @@ export default function SaaSInterviewApp() {
                         type="text"
                         value={jobTitle}
                         onChange={(e) => setJobTitle(e.target.value)}
-                        placeholder="例如：Testing - Design Verification Engineer 設計驗證工程師"
+                        placeholder="例如：資深前端工程師、產品經理 (PM)、後端架構師"
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden transition-all text-sm placeholder:text-[#A0A8A2]"
                       />
                     </div>
@@ -999,7 +998,7 @@ export default function SaaSInterviewApp() {
                       rows={3}
                       value={jobDescription}
                       onChange={(e) => setJobDescription(e.target.value)}
-                      placeholder="可直接貼上 104 網頁上的【工作內容】與【條件要求】（例如：負責設計驗證、制定測試計畫、熟悉治具設計與統計分析等）..."
+                      placeholder="可直接貼上 104 或求職網頁上的【工作內容】與【條件要求】（例如：負責分散式微服務設計、跨部門協調、資料庫效能優化等）..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden text-xs text-[#38403C] placeholder:text-[#A0A8A2] leading-relaxed resize-y"
                     />
                   </div>
