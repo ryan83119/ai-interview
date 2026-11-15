@@ -151,6 +151,7 @@ export default function SaaSInterviewApp() {
   // 階段識別：'intro' | 'formal' | 'reverse_question'
   const [currentStage, setCurrentStage] = useState<'intro' | 'formal' | 'reverse_question'>('intro');
   const [currentFormalQuestion, setCurrentFormalQuestion] = useState(0);
+  const [isInterviewCompleted, setIsInterviewCompleted] = useState(false);
 
   const [candidateInput, setCandidateInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -291,6 +292,7 @@ export default function SaaSInterviewApp() {
     setHistory([]);
     setCurrentStage('intro');
     setCurrentFormalQuestion(0);
+    setIsInterviewCompleted(false);
 
     try {
       const res = await fetch('/interview', {
@@ -353,10 +355,11 @@ export default function SaaSInterviewApp() {
       const data = await res.json();
 
       if (data.isFinished || data.type === 'feedback') {
-        // 面試圓滿結束，取得面試官回答候選人反問的內容，以及最終評分複盤報告
+        // 面試圓滿結束：先將面試官回答候選人反問的內容加入對話歷程，保留在對話頁面供候選人閱讀
         setHistory((prev) => [...prev, { role: 'interviewer', content: data.content }]);
         setAssessment(data.assessment);
-        setPhase('report');
+        setIsInterviewCompleted(true);
+        // 不立即切換到 report，讓使用者先在對話中看完面試官對反問的回答，再自主點擊下一步看全方位報告！
       } else {
         // 下一題（自我介紹 -> 正式第 1 題 -> ... -> 反問環節）
         setHistory((prev) => [...prev, { role: 'interviewer', content: data.content }]);
@@ -425,6 +428,7 @@ export default function SaaSInterviewApp() {
     setAssessment(null);
     setCurrentStage('intro');
     setCurrentFormalQuestion(0);
+    setIsInterviewCompleted(false);
     setCandidateInput('');
     setError(null);
   };
@@ -1286,20 +1290,21 @@ export default function SaaSInterviewApp() {
               {/* 面試進度橫條 */}
               <div className="bg-white/90 border border-[#E6E0D7] rounded-xl px-4 py-3 flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-3">
-                  {currentStage === 'intro' && (
+                  {isInterviewCompleted ? (
+                    <div className="text-xs font-bold text-[#2D6A4F] bg-[#EAF5EF] px-3 py-1 rounded-md flex items-center gap-1.5 border border-[#C8E6D3]">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      【面試圓滿結束】AI 已回答反問
+                    </div>
+                  ) : currentStage === 'intro' ? (
                     <div className="text-xs font-bold text-[#4A6B62] bg-[#EFEAE2] px-3 py-1 rounded-md flex items-center gap-1.5 border border-[#DFD8CD]">
                       <span className="w-2 h-2 rounded-full bg-[#4A6B62] animate-pulse" />
                       【破冰開場】自我介紹
                     </div>
-                  )}
-
-                  {currentStage === 'formal' && (
+                  ) : currentStage === 'formal' ? (
                     <div className="text-xs font-semibold text-[#4A6B62] bg-[#EFEAE2] px-3 py-1 rounded-md border border-[#DFD8CD]">
                       正式第 {currentFormalQuestion} / {totalQuestions || 3} 題
                     </div>
-                  )}
-
-                  {currentStage === 'reverse_question' && (
+                  ) : (
                     <div className="text-xs font-bold text-[#3B6658] bg-[#E4EFEA] px-3 py-1 rounded-md flex items-center gap-1.5 border border-[#C5DDD2]">
                       <span className="w-2 h-2 rounded-full bg-[#3B6658] animate-pulse" />
                       【結尾反問】換您向面試官提問
@@ -1307,11 +1312,12 @@ export default function SaaSInterviewApp() {
                   )}
 
                   <span className="text-xs text-[#7A827D] hidden sm:inline">
-                    {currentStage === 'intro' && '請簡短自我介紹並分享應徵契機（不計入題數）'}
-                    {currentStage === 'formal' && currentFormalQuestion === 1 && '正式第 1 題：深度深挖專案與核心技能'}
-                    {currentStage === 'formal' && currentFormalQuestion > 1 && currentFormalQuestion < (totalQuestions || 3) && `正式第 ${currentFormalQuestion} 題：技術架構與情境挑戰`}
-                    {currentStage === 'formal' && currentFormalQuestion === (totalQuestions || 3) && `正式第 ${currentFormalQuestion} 題：關鍵決策、團隊協作與綜合考察（最後一道正式題）`}
-                    {currentStage === 'reverse_question' && '換您提問！可詢問團隊文化、技術棧挑戰或未來期望（不計入題數，將納入評分）'}
+                    {isInterviewCompleted && '面試官已回答您的反問，請先研讀回答，隨後點擊下方按鈕查看全方位報告'}
+                    {!isInterviewCompleted && currentStage === 'intro' && '請簡短自我介紹並分享應徵契機（不計入題數）'}
+                    {!isInterviewCompleted && currentStage === 'formal' && currentFormalQuestion === 1 && '正式第 1 題：深度深挖專案與核心技能'}
+                    {!isInterviewCompleted && currentStage === 'formal' && currentFormalQuestion > 1 && currentFormalQuestion < (totalQuestions || 3) && `正式第 ${currentFormalQuestion} 題：技術架構與情境挑戰`}
+                    {!isInterviewCompleted && currentStage === 'formal' && currentFormalQuestion === (totalQuestions || 3) && `正式第 ${currentFormalQuestion} 題：關鍵決策、團隊協作與綜合考察（最後一道正式題）`}
+                    {!isInterviewCompleted && currentStage === 'reverse_question' && '換您提問！可詢問團隊文化、技術棧挑戰或未來期望（不計入題數，將納入評分）'}
                   </span>
                 </div>
 
@@ -1319,11 +1325,13 @@ export default function SaaSInterviewApp() {
                   <div
                     className="bg-[#4A6B62] h-full transition-all duration-500 rounded-full"
                     style={{
-                      width: currentStage === 'intro'
+                      width: isInterviewCompleted
+                        ? '100%'
+                        : currentStage === 'intro'
                         ? '10%'
                         : currentStage === 'reverse_question'
-                        ? '100%'
-                        : `${Math.min((currentFormalQuestion / (totalQuestions || 1)) * 100, 100)}%`
+                        ? '90%'
+                        : `${Math.min((currentFormalQuestion / (totalQuestions || 1)) * 80 + 10, 85)}%`
                     }}
                   />
                 </div>
@@ -1406,61 +1414,90 @@ export default function SaaSInterviewApp() {
                 <div ref={chatEndRef} />
               </div>
 
-              {/* 回答輸入面板 */}
-              <div className="bg-white border border-[#E6E0D7] rounded-2xl p-3 sm:p-4 shadow-sm space-y-2">
-                <div className="flex items-center justify-between text-xs text-[#848C87] px-1">
-                  <span className="flex items-center gap-1">
-                    {currentStage === 'intro' && (
-                      <>
-                        💡 <span className="font-semibold text-[#4A6B62]">破冰提示</span>：簡明扼要點出您的核心專業背景與應徵該職位的強烈動機
-                      </>
-                    )}
-                    {currentStage === 'formal' && (
-                      <>
-                        💡 建議掌握 <span className="font-semibold text-[#4A6B62]">STAR 原則</span>（情境、任務、行動、成果）
-                      </>
-                    )}
-                    {currentStage === 'reverse_question' && (
-                      <>
-                        💡 <span className="font-semibold text-[#3B6658]">反問提示</span>：可詢問團隊目前的技術痛點、前 3 個月的期待目標或公司文化，展現主動性（此題將納入評分）
-                      </>
-                    )}
-                  </span>
-                  <span>{candidateInput.length} 字</span>
+              {/* 回答輸入面板 / 面試完成下一步引導卡片 */}
+              {isInterviewCompleted ? (
+                <div className="bg-[#FAF8F5] border-2 border-[#4A6B62]/30 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-sm animate-in fade-in zoom-in-95">
+                  <div className="w-14 h-14 rounded-2xl bg-[#4A6B62]/10 text-[#4A6B62] flex items-center justify-center mx-auto shadow-2xs">
+                    <Award className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1.5 max-w-lg mx-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-[#1E2321]">
+                      🎉 本次模擬面試流程已圓滿完成！
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#5C645F] leading-relaxed">
+                      AI 面試官已在上方對話中親切回答了您的反問問題。全流程（自我介紹 ＋ {totalQuestions || 3} 道正式專業問答 ＋ 結尾反問）的深度評審與逐題覆盤診斷書已產出完畢。
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhase('report');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-[#4A6B62] hover:bg-[#3D5952] text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                    >
+                      <span>點選下一步：查看全方位面試評分與覆盤報告</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <textarea
-                    ref={textareaRef}
-                    rows={3}
-                    value={candidateInput}
-                    onChange={(e) => setCandidateInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        handleSubmitAnswer();
+              ) : (
+                <div className="bg-white border border-[#E6E0D7] rounded-2xl p-3 sm:p-4 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs text-[#848C87] px-1">
+                    <span className="flex items-center gap-1">
+                      {currentStage === 'intro' && (
+                        <>
+                          💡 <span className="font-semibold text-[#4A6B62]">破冰提示</span>：簡明扼要點出您的核心專業背景與應徵該職位的強烈動機
+                        </>
+                      )}
+                      {currentStage === 'formal' && (
+                        <>
+                          💡 建議掌握 <span className="font-semibold text-[#4A6B62]">STAR 原則</span>（情境、任務、行動、成果）
+                        </>
+                      )}
+                      {currentStage === 'reverse_question' && (
+                        <>
+                          💡 <span className="font-semibold text-[#3B6658]">反問提示</span>：可詢問團隊目前的技術痛點、前 3 個月的期待目標或公司文化，展現主動性（此題將納入評分）
+                        </>
+                      )}
+                    </span>
+                    <span>{candidateInput.length} 字</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <textarea
+                      ref={textareaRef}
+                      rows={3}
+                      value={candidateInput}
+                      onChange={(e) => setCandidateInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault();
+                          handleSubmitAnswer();
+                        }
+                      }}
+                      disabled={loading}
+                      placeholder={
+                        currentStage === 'intro'
+                          ? '請在此輸入您的自我介紹與應徵動機... (快捷鍵: Ctrl/Cmd + Enter 送出)'
+                          : currentStage === 'reverse_question'
+                          ? '請在此輸入您想問面試官的問題... (若無問題可輸入「目前沒有問題」，快捷鍵: Ctrl/Cmd + Enter 送出)'
+                          : '請在此輸入您的回答... (快捷鍵: Ctrl/Cmd + Enter 送出)'
                       }
-                    }}
-                    disabled={loading}
-                    placeholder={
-                      currentStage === 'intro'
-                        ? '請在此輸入您的自我介紹與應徵動機... (快捷鍵: Ctrl/Cmd + Enter 送出)'
-                        : currentStage === 'reverse_question'
-                        ? '請在此輸入您想問面試官的問題... (若無問題可輸入「目前沒有問題」，快捷鍵: Ctrl/Cmd + Enter 送出)'
-                        : '請在此輸入您的回答... (快捷鍵: Ctrl/Cmd + Enter 送出)'
-                    }
-                    className="flex-1 px-3 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#DDD6CC] focus:border-[#4A6B62] focus:bg-white focus:outline-hidden text-sm placeholder:text-[#A0A8A2] resize-none leading-relaxed"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSubmitAnswer}
-                    disabled={loading || !candidateInput.trim()}
-                    className="px-5 rounded-xl bg-[#4A6B62] hover:bg-[#3D5952] text-white flex flex-col items-center justify-center gap-1 transition-all shadow-2xs disabled:opacity-40 cursor-pointer min-w-[76px]"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span className="text-xs font-medium">送出</span>
-                  </button>
+                      className="flex-1 px-3 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#DDD6CC] focus:border-[#4A6B62] focus:bg-white focus:outline-hidden text-sm placeholder:text-[#A0A8A2] resize-none leading-relaxed"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSubmitAnswer}
+                      disabled={loading || !candidateInput.trim()}
+                      className="px-5 rounded-xl bg-[#4A6B62] hover:bg-[#3D5952] text-white flex flex-col items-center justify-center gap-1 transition-all shadow-2xs disabled:opacity-40 cursor-pointer min-w-[76px]"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span className="text-xs font-medium">送出</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1686,6 +1723,17 @@ export default function SaaSInterviewApp() {
 
               {/* 底部操作按鈕 */}
               <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhase('interview');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#D5CDC2] bg-white hover:bg-[#FAF8F5] text-xs sm:text-sm font-medium text-[#414844] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                >
+                  <MessageSquare className="w-4 h-4 text-[#4A6B62]" />
+                  查看面試對話歷程
+                </button>
                 <button
                   type="button"
                   onClick={handleCopyReport}
