@@ -31,7 +31,9 @@ import {
   RefreshCw,
   Star,
   Compass,
-  HelpCircle as QuestionIcon
+  HelpCircle as QuestionIcon,
+  Building2,
+  Link2
 } from 'lucide-react';
 
 interface Message {
@@ -66,27 +68,44 @@ interface Assessment {
 
 const SAMPLE_PRESETS = [
   {
+    company: '瑞健醫療 (SHL Medical)',
+    title: 'Testing - Design Verification Engineer 設計驗證工程師',
+    url: 'https://www.104.com.tw/job/71u9s',
+    jobDescription: `【Company Overview】
+SHL Medical is the world-leading solution provider in the design, development, and manufacturing of advanced drug delivery systems with more than 5000 employees worldwide.
+
+【Job Overview】
+The Verification Engineer is responsible for ensuring the precision, accuracy, and compliance of engineering tests, feasibility studies, design assessments, and design verifications in accordance with industry standards and regulation requirements. This pivotal role involves executing tests to verify the device function, performance, safety and compliance.`,
+    resume: `【個人簡介】
+具備跨領域 R&D 與專案管理實務經驗，熟悉產品設計驗證流程、治具規劃與試產除錯。
+
+【核心經歷】
+- 主導新品驗證測試方案制定，完成信賴性與功能性驗證報告。
+- 與跨部門團隊密切協同，解決初期公差與機構問題。`
+  },
+  {
+    company: '科技新創',
     title: '前端資深工程師',
     url: 'https://example.com/jobs/senior-frontend-engineer',
+    jobDescription: '主導高流量電商核心模組重構，負責前端架構設計與效能優化。',
     resume: `【個人簡介】
 5 年前端開發經驗，熟悉 React、Next.js、TypeScript 與 Tailwind CSS。主導過高流量電商核心模組重構，並導入微前端架構。
 
 【工作經歷】
 - 科技新創 資深前端工程師（2023 - 至今）：
   - 負責使用者介面效能優化，將 LCP 指標提升 45%，跳出率降低 12%。
-  - 導入 Tailwind 與 Design System，跨團隊元件覆用率達 80%。
-- 軟體顧問公司 前端工程師（2021 - 2023）：
-  - 開發 CRM 系統與即時數據儀表板，支援 WebSocket 即時圖表渲染。`
+  - 導入 Tailwind 與 Design System，跨團隊元件覆用率達 80%。`
   },
   {
+    company: '生成式 AI 企業',
     title: 'AI 產品經理',
     url: 'https://example.com/jobs/ai-product-manager',
+    jobDescription: '規劃企業級生成式 AI 產品落地與 RAG 應用架構。',
     resume: `【個人簡介】
 4 年科技產品規劃經驗，專注於生成式 AI 應用落地、LLM 工作流程設計與商業變現。
 
 【核心專案】
-- 企業級智能客服系統：從 0 到 1 規劃 RAG 檢索架構與評測指標，客服自動回覆率達 72%，年省百萬營運成本。
-- 具備跨領域溝通與敏捷開發引領能力，能精準將商業目標轉化為工程規格。`
+- 企業級智能客服系統：從 0 到 1 規劃 RAG 檢索架構與評測指標，客服自動回覆率達 72%，年省百萬營運成本。`
   }
 ];
 
@@ -115,6 +134,10 @@ export default function SaaSInterviewApp() {
   // 面試狀態
   const [phase, setPhase] = useState<'setup' | 'interview' | 'report'>('setup');
   const [jobUrl, setJobUrl] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [parsingJob, setParsingJob] = useState(false);
   const [resume, setResume] = useState('');
   const [resumeMode, setResumeMode] = useState<'upload' | 'text'>('upload');
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
@@ -213,10 +236,39 @@ export default function SaaSInterviewApp() {
   };
 
   const loadPreset = (preset: typeof SAMPLE_PRESETS[0]) => {
+    setCompanyName(preset.company || '');
+    setJobTitle(preset.title);
     setJobUrl(preset.url);
+    setJobDescription(preset.jobDescription || '');
     setResume(preset.resume);
     setResumeMode('text');
     setUploadedFile(null);
+  };
+
+  // 自動解析 104 或職缺網址
+  const handleAutoParseUrl = async (urlInput?: string) => {
+    const target = (urlInput !== undefined ? urlInput : jobUrl).trim();
+    if (!target || (!target.startsWith('http://') && !target.startsWith('https://'))) {
+      return;
+    }
+    setParsingJob(true);
+    try {
+      const res = await fetch('/api/parse-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: target })
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        if (json.data.company) setCompanyName(json.data.company);
+        if (json.data.title) setJobTitle(json.data.title);
+        if (json.data.description) setJobDescription(json.data.description);
+      }
+    } catch (err) {
+      console.warn('Auto parse url failed:', err);
+    } finally {
+      setParsingJob(false);
+    }
   };
 
   // 開始面試 -> 取得開場自我介紹題目
@@ -246,6 +298,9 @@ export default function SaaSInterviewApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobUrl: jobUrl.trim(),
+          companyName: companyName.trim(),
+          jobTitle: jobTitle.trim(),
+          jobDescription: jobDescription.trim(),
           resume: resume.trim(),
           totalQuestions: qCount,
           history: []
@@ -281,6 +336,9 @@ export default function SaaSInterviewApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobUrl: jobUrl.trim(),
+          companyName: companyName.trim(),
+          jobTitle: jobTitle.trim(),
+          jobDescription: jobDescription.trim(),
           resume: resume.trim(),
           totalQuestions: totalQuestions || 3,
           history: historyToSend
@@ -832,20 +890,115 @@ export default function SaaSInterviewApp() {
 
               {/* 輸入表單卡片 */}
               <div className="bg-white/80 backdrop-blur-sm border border-[#E5DFD6] rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
-                {/* 職缺網址 */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[#2C302E] flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-[#4A6B62]" />
-                    目標職缺網址或職位名稱
-                    <span className="text-xs font-normal text-[#8A918C]">（選填，可直接貼上 104、LinkedIn 或公司職缺）</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={jobUrl}
-                    onChange={(e) => setJobUrl(e.target.value)}
-                    placeholder="例如：https://www.cakeresume.com/companies/... 或 輸入「資深全端工程師」"
-                    className="w-full px-4 py-3 rounded-xl bg-[#FAF8F5] border border-[#DDD6CC] focus:border-[#4A6B62] focus:bg-white focus:outline-hidden transition-all text-sm placeholder:text-[#A0A8A2]"
-                  />
+                {/* 目標職缺與公司設定 */}
+                <div className="bg-[#FAF8F5] border border-[#DDD6CC] rounded-2xl p-5 sm:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-[#EDE7DF] pb-3">
+                    <label className="text-sm font-semibold text-[#2C302E] flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-[#4A6B62]" />
+                      目標應徵職缺與公司資訊
+                    </label>
+                    <span className="text-xs text-[#7A827D]">
+                      明確設定公司與職缺，面試官將精準代表該企業考官提問
+                    </span>
+                  </div>
+
+                  {/* 公司名稱與職位名稱雙欄 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#414844] flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-[#4A6B62]" />
+                        目標應徵公司名稱
+                        <span className="text-xs font-normal text-[#C47A53]">*重要</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        placeholder="例如：瑞健股份有限公司 (SHL Medical)、聯發科、Google"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden transition-all text-sm placeholder:text-[#A0A8A2]"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#414844] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#4A6B62]" />
+                        應徵職位名稱
+                        <span className="text-xs font-normal text-[#C47A53]">*推薦</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        placeholder="例如：Testing - Design Verification Engineer 設計驗證工程師"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden transition-all text-sm placeholder:text-[#A0A8A2]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 貼上 104 / 職缺連結自動解析 */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-[#414844] flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-[#4A6B62]" />
+                        104 / CakeResume 職缺連結
+                        <span className="text-[11px] font-normal text-[#8A918C]">（貼上網址自動解析公司與職缺資訊）</span>
+                      </label>
+                      {parsingJob && (
+                        <span className="text-xs text-[#4A6B62] flex items-center gap-1.5 font-medium animate-pulse">
+                          <div className="w-3 h-3 border-2 border-[#4A6B62] border-t-transparent rounded-full animate-spin" />
+                          正在自動連線解析職缺資訊...
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={jobUrl}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setJobUrl(val);
+                          if (val.includes('104.com.tw/job/')) {
+                            handleAutoParseUrl(val);
+                          }
+                        }}
+                        onBlur={() => handleAutoParseUrl()}
+                        placeholder="可貼上 104 或職缺網址，例如：https://www.104.com.tw/job/..."
+                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden transition-all text-xs sm:text-sm placeholder:text-[#A0A8A2]"
+                      />
+                      <button
+                        type="button"
+                        disabled={parsingJob || !jobUrl.trim()}
+                        onClick={() => handleAutoParseUrl()}
+                        className="px-4 py-2.5 rounded-xl bg-[#EFEAE2] hover:bg-[#E4DDD2] text-[#4A6B62] text-xs font-semibold border border-[#DDD6CC] transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        自動解析
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 職缺詳細工作說明與條件 (JD) */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-[#414844] flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-[#4A6B62]" />
+                        職缺詳細工作說明與徵才條件 (JD)
+                        <span className="text-[11px] font-normal text-[#8A918C]">（選填，貼上可讓 AI 針對所需技術深度提問）</span>
+                      </label>
+                      {jobDescription && (
+                        <span className="text-[11px] text-[#3D6B58] font-medium bg-[#E4EFEA] px-2 py-0.5 rounded border border-[#C5DDD2]">
+                          已載入 {jobDescription.length} 字工作內容
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      placeholder="可直接貼上 104 網頁上的【工作內容】與【條件要求】（例如：負責設計驗證、制定測試計畫、熟悉治具設計與統計分析等）..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DDD6CC] focus:border-[#4A6B62] focus:outline-hidden text-xs text-[#38403C] placeholder:text-[#A0A8A2] leading-relaxed resize-y"
+                    />
+                  </div>
                 </div>
 
                 {/* 正式面試題數設定（完全不預設題數，讓使用者自主選擇） */}

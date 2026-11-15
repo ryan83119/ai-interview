@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseJobUrl } from '../parse-job/route';
 
 // Polyfill DOMMatrix for Node.js environment if needed by PDF.js
 if (typeof globalThis.DOMMatrix === 'undefined') {
@@ -84,6 +85,9 @@ export async function POST(req: Request) {
     }
 
     let jobUrl = '';
+    let companyName = '';
+    let jobTitle = '';
+    let jobDescription = '';
     let resume = '';
     let history: Message[] = [];
     let totalQuestions = 3;
@@ -93,6 +97,9 @@ export async function POST(req: Request) {
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       jobUrl = (formData.get('jobUrl') as string) || '';
+      companyName = (formData.get('companyName') as string) || '';
+      jobTitle = (formData.get('jobTitle') as string) || '';
+      jobDescription = (formData.get('jobDescription') as string) || '';
       resume = (formData.get('resume') as string) || '';
       const totalQStr = formData.get('totalQuestions') as string;
       if (totalQStr) totalQuestions = Number(totalQStr) || 3;
@@ -116,26 +123,52 @@ export async function POST(req: Request) {
     } else {
       const body = await req.json();
       jobUrl = body.jobUrl || '';
+      companyName = body.companyName || '';
+      jobTitle = body.jobTitle || '';
+      jobDescription = body.jobDescription || '';
       resume = body.resume || '';
       history = body.history || [];
       totalQuestions = Number(body.totalQuestions) || 3;
     }
 
+    // 若使用者輸入了網址，且未填寫詳細內容，自動由後端解析（支援 104、CakeResume 等）
+    if (jobUrl && (jobUrl.startsWith('http://') || jobUrl.startsWith('https://')) && !jobDescription) {
+      try {
+        const parsed = await parseJobUrl(jobUrl);
+        if (parsed) {
+          if (!companyName && parsed.company) companyName = parsed.company;
+          if (!jobTitle && parsed.title) jobTitle = parsed.title;
+          if (parsed.description) jobDescription = parsed.description;
+        }
+      } catch (err) {
+        console.warn('Backend auto parseJobUrl error:', err);
+      }
+    }
+
+    // 整合職缺資訊摘要
+    const targetJobSummary = [
+      companyName ? `【目標應徵公司】：${companyName}` : '',
+      jobTitle ? `【目標應徵職缺】：${jobTitle}` : '',
+      jobDescription ? `【職缺工作內容與技能要求 (JD)】：\n${jobDescription}` : '',
+      jobUrl && !jobDescription ? `【職缺來源資訊/網址】：${jobUrl}` : ''
+    ].filter(Boolean).join('\n\n') || (jobUrl ? `【目標職缺資訊】：${jobUrl}` : '【目標職缺】：標準專業職務考核');
+
     // 限制正式題數範圍在 1 ~ 10 題
     totalQuestions = Math.min(Math.max(totalQuestions, 1), 10);
 
     // 計算目前候選人已回答的次數
-    // 0: 尚未回答 -> 出【開場自我介紹】
-    // 1: 剛回答完自我介紹 -> 出【正式第 1 題】
-    // 2 ~ totalQuestions: 出【正式第 2 ~ totalQuestions 題】
-    // totalQuestions + 1: 正式題目全回答完畢 -> 面試官提問【候選人反問環節】
-    // > totalQuestions + 1: 候選人已提出反問 -> 面試官回答候選人問題，並產出【總體評分與逐題複盤報告】
     const candidateAnswers = history.filter((m) => m.role === 'candidate');
     const answerCount = candidateAnswers.length;
 
     const systemInstruction = `
-你是一位具備十餘年頂尖跨國科技企業招聘經驗、標準極度嚴苛的資深面試官。
-請根據應徵職缺資訊及候選人提供的履歷資料，進行極具實戰檢驗度、嚴謹且犀利的專業模擬面試。
+你是一位具備十餘年頂尖跨國企業招聘經驗、標準極度嚴苛的資深技術面試官。
+請根據【目標應徵職缺資訊】及【候選人履歷】，進行極具實戰檢驗度、嚴謹且犀利的專業模擬面試。
+
+【面試官身分與公司歸屬鐵律（絕對嚴禁混淆！）】：
+1. 面試官代表的公司：面試官「必須且只能」代表【目標應徵公司】（例如若資訊中有「瑞健股份有限公司」或「SHL Medical」，面試官即為瑞健醫療的資深考官！）。
+2. 前東家界線：候選人履歷中所記載的公司（如候選人過去曾任職的「聯華食品」、「源友企業」）是候選人的【過往工作經歷 / 前東家】！
+3. 【嚴禁指鹿為馬】：絕對【嚴禁】把候選人以前任職的公司當作本次面試的招聘企業！面試官絕不可自稱「我是聯華食品的面試官」！
+4. 若目標職缺資訊未載明公司名稱，面試官請自稱為「目標職位招聘團隊的面試官」，任何情況下都絕不得從候選人履歷中抓舊公司來充數！
 
 【面試官專業態度與互動原則】：
 1. 嚴肅把關：在真實專業面試中，候選人若作答極短（如僅一句話）、敷衍或僅憑直覺直觀回答（例如「薪水高」、「我想學技術」、「我會配合主管」），面試官必須在回應中直白指正其作答過於簡略、缺乏專業深度與準備，並要求後續回答必須提供具體脈絡與案例。
@@ -154,12 +187,14 @@ export async function POST(req: Request) {
     if (answerCount === 0) {
       // 階段 1：破冰開場自我介紹（不計題數）
       userPrompt = `
-【職缺資訊/網址】：${jobUrl || '一般專業技術職缺'}
+【目標應徵職缺資訊】：
+${targetJobSummary}
+
 【候選人履歷】：
 ${resume || '無提供履歷，請進行標準職務面試'}
 
 這是面試的最初開場。本階段為【破冰開場與自我介紹】（請注意：此開場不計入使用者選擇的 ${totalQuestions} 道正式專業題數）。
-請向候選人親切問候，簡述今日面試的職位，並邀請候選人進行簡要的自我介紹，同時分享是什麼契機或職涯規劃促使他決定應徵這個職位。
+請以【目標應徵公司】的面試官身分向候選人親切問候，簡述今日面試的職位，並邀請候選人進行簡要的自我介紹，同時分享是什麼契機或職涯規劃促使他決定應徵我們公司的這個職位。
 
 請務必嚴格以如下 JSON 格式回應（不加 \`\`\`json 標籤）：
 {
@@ -178,7 +213,8 @@ ${resume || '無提供履歷，請進行標準職務面試'}
 
       if (formalQNum === 1) {
         userPrompt = `
-【職缺資訊/網址】：${jobUrl}
+【目標應徵職缺資訊】：
+${targetJobSummary}
 【候選人履歷】：${resume}
 【整場面試正式題數】：共 ${totalQuestions} 題
 【目前進度】：候選人剛完成【自我介紹】。現在正式進入【正式面試題目第 1 題】（共 ${totalQuestions} 題）。
@@ -201,7 +237,8 @@ ${JSON.stringify(history, null, 2)}
 `;
       } else {
         userPrompt = `
-【職缺資訊/網址】：${jobUrl}
+【目標應徵職缺資訊】：
+${targetJobSummary}
 【候選人履歷】：${resume}
 【整場面試正式題數】：共 ${totalQuestions} 題
 【目前進度】：候選人已回答至正式第 ${formalQNum - 1} 題。現在準備提出【正式第 ${formalQNum} 題】（共 ${totalQuestions} 題）${isLastFormalQuestion ? '（這是最後一道正式問題）' : ''}。
@@ -231,7 +268,8 @@ ${
     } else if (answerCount === totalQuestions + 1) {
       // 階段 3：所有正式題目回答完畢 -> 面試官提問【候選人反問環節】（不計入題數）
       userPrompt = `
-【職缺資訊/網址】：${jobUrl}
+【目標應徵職缺資訊】：
+${targetJobSummary}
 【候選人履歷】：${resume}
 【整場面試正式題數】：共 ${totalQuestions} 題（已全數回答完畢）
 【面試歷史歷程】：
@@ -254,7 +292,8 @@ ${JSON.stringify(history, null, 2)}
     } else {
       // 階段 4：候選人已提出反問 -> 面試官在 content 中親切回答，並輸出【總體評分與全方位複盤報告】
       userPrompt = `
-【職缺資訊/網址】：${jobUrl}
+【目標應徵職缺資訊】：
+${targetJobSummary}
 【候選人履歷】：${resume}
 【面試歷史歷程（包含 1 次自我介紹 + ${totalQuestions} 道正式問答 + 1 次候選人反問）】：
 ${JSON.stringify(history, null, 2)}
