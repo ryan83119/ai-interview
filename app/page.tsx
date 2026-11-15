@@ -1341,11 +1341,13 @@ export default function SaaSInterviewApp() {
                     </div>
                     <div className="text-xs text-white/80 border-l border-white/20 pl-4 py-1 leading-relaxed">
                       {assessment.totalScore >= 85 ? (
-                        <span className="font-semibold text-[#B9F5D8]">優異表現，極具競爭力</span>
+                        <span className="font-semibold text-[#B9F5D8]">優異表現，極具競爭力（推薦錄取）</span>
                       ) : assessment.totalScore >= 70 ? (
-                        <span className="font-semibold text-[#FBE4A0]">良好基礎，尚有打磨空間</span>
+                        <span className="font-semibold text-[#FBE4A0]">良好基礎，具備競爭潛力（可考慮錄取）</span>
+                      ) : assessment.totalScore >= 50 ? (
+                        <span className="font-semibold text-[#FFC4BA]">未達門檻，內容空泛缺乏說服力（暫不錄取）</span>
                       ) : (
-                        <span className="font-semibold text-[#FFC4BA]">建議加強實戰舉例與結構</span>
+                        <span className="font-semibold text-[#FF9B8A] bg-black/20 px-2 py-0.5 rounded">嚴重不及格，作答過簡敷衍（強烈淘汰）</span>
                       )}
                     </div>
                   </div>
@@ -1354,30 +1356,46 @@ export default function SaaSInterviewApp() {
 
               {/* 分項維度指標 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {assessment.dimensions.map((dim, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white/80 border border-[#E6E0D7] rounded-2xl p-5 shadow-2xs space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-sm text-[#2C302E]">
-                        {dim.name}
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#EFEAE2] text-[#4A6B62]">
-                        {dim.score} 分
-                      </span>
+                {assessment.dimensions.map((dim, idx) => {
+                  const isFail = dim.score < 50;
+                  const isWarning = dim.score < 70;
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-white/80 border border-[#E6E0D7] rounded-2xl p-5 shadow-2xs space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-sm text-[#2C302E]">
+                          {dim.name}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                          isFail
+                            ? 'bg-[#FBF0EE] text-[#A63A2D] border-[#F1D4CD]'
+                            : isWarning
+                            ? 'bg-[#FEF7EC] text-[#B45309] border-[#FDE68A]'
+                            : 'bg-[#EFEAE2] text-[#4A6B62] border-[#DFD8CD]'
+                        }`}>
+                          {dim.score} 分
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#EFEAE2] rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            isFail
+                              ? 'bg-[#A63A2D]'
+                              : isWarning
+                              ? 'bg-[#C47A53]'
+                              : 'bg-[#4A6B62]'
+                          }`}
+                          style={{ width: `${Math.min(dim.score, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-[#666F69] leading-relaxed">
+                        {dim.comment}
+                      </p>
                     </div>
-                    <div className="w-full bg-[#EFEAE2] rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-[#4A6B62] h-full rounded-full transition-all duration-700"
-                        style={{ width: `${Math.min(dim.score, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-[#666F69] leading-relaxed">
-                      {dim.comment}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* 優勢與改進建議兩欄卡片 */}
@@ -1451,8 +1469,17 @@ export default function SaaSInterviewApp() {
                               </h4>
                             </div>
                             <div className="flex-shrink-0 text-right">
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#4A6B62]/10 text-[#4A6B62] border border-[#4A6B62]/20">
-                                {rev.score} 分
+                              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
+                                rev.score < 45
+                                  ? 'bg-[#FBF0EE] text-[#A63A2D] border-[#F1D4CD]'
+                                  : rev.score < 70
+                                  ? 'bg-[#FEF7EC] text-[#B45309] border-[#FDE68A]'
+                                  : 'bg-[#EAF5EF] text-[#2D6A4F] border-[#C8E6D3]'
+                              }`}>
+                                <span>{rev.score} 分</span>
+                                <span className="text-[10px] opacity-80 font-normal">
+                                  {rev.score < 45 ? '· 嚴重過簡' : rev.score < 70 ? '· 待加強' : '· 良好'}
+                                </span>
                               </span>
                             </div>
                           </div>
